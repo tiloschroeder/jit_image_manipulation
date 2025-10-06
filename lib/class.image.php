@@ -1,6 +1,8 @@
 <?php
 
-class Image
+require_once(TOOLKIT . '/class.gateway.php');
+
+Class Image
 {
     private $_resource;
     private $_meta;
@@ -11,7 +13,7 @@ class Image
     const DEFAULT_INTERLACE = true;
     const CURL_MAXREDIRS = 6;
 
-    protected function __construct($resource, stdClass $meta)
+    public function __construct($resource, stdClass $meta)
     {
         $this->_resource = $resource;
         $this->_meta = $meta;
@@ -19,14 +21,9 @@ class Image
 
     public function __destruct()
     {
-        if (is_resource($this->_resource)) {
+        if($this->_resource instanceof GdImage) {
             imagedestroy($this->_resource);
         }
-    }
-
-    public function setResource($resource)
-    {
-        $this->_resource = $resource;
     }
 
     public function Resource()
@@ -66,7 +63,7 @@ class Image
         // get the raw body response, ignore errors
         $response = @$gateway->exec();
 
-        if ($response === false) {
+        if($response === false){
             throw new Exception(sprintf('Error reading external image <code>%s</code>. Please check the URI.', $uri));
         }
 
@@ -76,7 +73,7 @@ class Image
         // Symphony 2.4 enhances the TMP constant so it can be relied upon
         $dest = tempnam(TMP, 'IMAGE');
 
-        if (!file_put_contents($dest, $response)) {
+        if(!file_put_contents($dest, $response)) {
             throw new Exception(sprintf('Error writing to temporary file <code>%s</code>.', $dest));
         }
 
@@ -95,19 +92,20 @@ class Image
      */
     public static function load($image)
     {
-        if (!is_file($image) || !is_readable($image)) {
+        if(!is_file($image) || !is_readable($image)){
             throw new Exception(sprintf('Error loading image <code>%s</code>. Check it exists and is readable.', str_replace(DOCROOT, '', $image)));
         }
 
         $meta = self::getMetaInformation($image);
+        $resource = null;
 
-        switch ($meta->type) {
+        switch($meta->type) {
             // GIF
             case IMAGETYPE_GIF:
                 $resource = imagecreatefromgif($image);
                 break;
 
-            // JPEG
+                // JPEG
             case IMAGETYPE_JPEG:
                 // GD 2.0.22 supports basic CMYK to RGB conversion.
                 // RE: https://github.com/symphonycms/jit_image_manipulation/issues/47
@@ -118,14 +116,18 @@ class Image
                     throw new Exception('Cannot load CMYK JPG images');
 
                     // Can handle CMYK, or image has less than 3 channels.
-                } else {
+                } else{
                     $resource = imagecreatefromjpeg($image);
                 }
                 break;
 
-            // PNG
+                // PNG
             case IMAGETYPE_PNG:
                 $resource = imagecreatefrompng($image);
+                break;
+
+            case IMAGETYPE_WEBP:
+                $resource = imagecreatefromwebp($image);
                 break;
 
             default:
@@ -133,7 +135,7 @@ class Image
                 break;
         }
 
-        if (!is_resource($resource)) {
+        if(!$resource instanceof GdImage){
             throw new Exception(sprintf('Error creating image <code>%s</code>. Check it exists and is readable.', str_replace(DOCROOT, '', $image)));
         }
 
@@ -152,7 +154,7 @@ class Image
      */
     public static function getMetaInformation($file)
     {
-        if (!$array = getimagesize($file)) {
+        if(!$array = getimagesize($file)) {
             throw new Exception('Unable to retreive image size information for ' . $file);
         }
 
@@ -181,17 +183,15 @@ class Image
      *  this function will prompt the user to download the image rather
      *  than display it inline
      */
-    public static function renderOutputHeaders($type, $destination = null)
+    public static function renderOutputHeaders($type, $destination=NULL)
     {
         header('Content-Type: ' . image_type_to_mime_type($type));
 
-        if (is_null($destination)) {
-            return;
-        }
+        if(is_null($destination)) return;
 
         // Try to remove old extension
         $ext = strrchr($destination, '.');
-        if ($ext !== false) {
+        if($ext !== false){
             $destination = substr($destination, 0, -strlen($ext));
         }
 
@@ -254,7 +254,7 @@ class Image
     public static function getHttpHead($url)
     {
         // Check if we have a cached result
-        if (isset(self::$_result[$url])) {
+        if(isset(self::$_result[$url])) {
             return self::$_result[$url];
         }
 
@@ -299,14 +299,15 @@ class Image
     {
         $retVal = array();
         $fields = explode("\r\n", preg_replace('/\x0D\x0A[\x09\x20]+/', ' ', $header));
-        foreach ($fields as $field) {
-            if (preg_match('/([^:]+): (.+)/m', $field, $match)) {
-                $match[1] = preg_replace_callback('/(?<=^|[\x09\x20\x2D])./', function ($matches) {
+        foreach( $fields as $field ){
+            if( preg_match('/([^:]+): (.+)/m', $field, $match) ){
+                $match[1] = preg_replace_callback('/(?<=^|[\x09\x20\x2D])./', function($matches) {
                     return strtoupper($matches[0]);
                 }, strtolower(trim($match[1])));
-                if (isset($retVal[$match[1]])) {
+                if( isset($retVal[$match[1]]) ){
                     $retVal[$match[1]] = array($retVal[$match[1]], $match[2]);
-                } else {
+                }
+                else{
                     $retVal[$match[1]] = trim($match[2]);
                 }
             }
@@ -339,6 +340,30 @@ class Image
     }
 
     /**
+     * Given a filter name, this function will attempt to load the filter
+     * from the `/filters` folder and call it's `run` method. The JIT core
+     * provides filters for 'crop', 'resize' and 'scale'.
+     *
+     * @param string $filter
+     *  The filter name
+     * @param array $args
+     *  The arguments to pass to the filter's `run()` method
+     * @return boolean
+     */
+    public function applyFilter($filter = null, array $args = array())
+    {
+        if(is_null($filter) || !is_file(EXTENSIONS . "/jit_image_manipulation/lib/filters/filter.{$filter}.php")) return false;
+
+        require_once("filters/filter.{$filter}.php");
+
+        array_unshift($args, $this->_resource);
+
+        $this->_resource = call_user_func_array(array(sprintf('Filter%s', ucfirst($filter)), 'run'), $args);
+
+        return true;
+    }
+
+    /**
      * The function takes optional `$quality`, `$interlacing` and `$output`
      * parameters to return an image resource after it has been processed
      * using `applyFilter`.
@@ -355,16 +380,14 @@ class Image
      */
     public function display($quality = Image::DEFAULT_QUALITY, $interlacing = Image::DEFAULT_INTERLACE, $output = null)
     {
-        if (!$output) {
-            $output = $this->Meta()->type; //DEFAULT_OUTPUT_TYPE;
-        }
+        if(!$output) $output = $this->Meta()->type; //DEFAULT_OUTPUT_TYPE;
+
         self::renderOutputHeaders($output);
 
-        if (isset($this->_image) && is_resource($this->_image)) {
+        if(isset($this->_image) && $this->_image instanceof GdImage) {
             return $this->_image;
-        } else {
-            return self::__render(null, $quality, $interlacing, $output);
         }
+        else return self::__render(NULL, $quality, $interlacing, $output);
     }
 
     /**
@@ -384,9 +407,8 @@ class Image
      */
     public function save($dest, $quality = Image::DEFAULT_QUALITY, $interlacing = Image::DEFAULT_INTERLACE, $output = null)
     {
-        if (!$output) {
-            $output = $this->Meta()->type; //DEFAULT_OUTPUT_TYPE;
-        }
+        if(!$output) $output = $this->Meta()->type; //DEFAULT_OUTPUT_TYPE;
+
         $this->_image = self::__render($dest, $quality, $interlacing, $output);
         return $this->_image;
     }
@@ -407,24 +429,28 @@ class Image
      *  which will attempt to get the constant using the `$this->Meta` accessor
      * @return boolean
      */
-    protected function __render($dest, $quality = Image::DEFAULT_QUALITY, $interlacing = Image::DEFAULT_INTERLACE, $output = null)
+    private function __render($dest, $quality = Image::DEFAULT_QUALITY, $interlacing = Image::DEFAULT_INTERLACE, $output = null)
     {
-        if (!is_resource($this->_resource)) {
+        if(!$this->_resource instanceof GdImage) {
             throw new Exception('Invalid image resource supplied');
         }
 
         // Turn interlacing on for JPEG or PNG only
-        if ($interlacing && ($output == IMAGETYPE_JPEG || $output == IMAGETYPE_PNG)) {
+        if($interlacing && ($output == IMAGETYPE_JPEG || $output == IMAGETYPE_PNG)) {
             imageinterlace($this->_resource);
         }
 
-        switch ($output) {
+        switch($output) {
             case IMAGETYPE_GIF:
                 return imagegif($this->_resource, $dest);
                 break;
 
             case IMAGETYPE_PNG:
                 return imagepng($this->_resource, $dest, round(9 * ($quality * 0.01)));
+                break;
+
+            case IMAGETYPE_WEBP:
+                return imagewebp($this->_resource, $dest, $quality);
                 break;
 
             case IMAGETYPE_JPEG:
@@ -435,4 +461,5 @@ class Image
 
         return false;
     }
+
 }

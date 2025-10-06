@@ -1,13 +1,13 @@
 <?php
 
-    require_once(TOOLKIT . '/class.datasource.php');
+require_once(TOOLKIT . '/class.datasource.php');
 
-class datasourcejit_image_manipulation_recipes extends Datasource
+Class datasourcejit_image_manipulation_recipes extends Datasource
 {
 
     public $dsParamROOTELEMENT = 'jit-image-manipulation-recipes';
 
-    public function __construct(array $env = null, $process_params = true)
+    public function __construct(array $env = null, $process_params=true)
     {
         parent::__construct($env, $process_params);
     }
@@ -26,24 +26,24 @@ class datasourcejit_image_manipulation_recipes extends Datasource
         );
     }
 
-    public function execute(array &$param_pool = null)
+    public function grab(array &$param_pool=NULL)
     {
         $result = new XMLElement($this->dsParamROOTELEMENT);
 
-        if (file_exists(WORKSPACE . '/jit-image-manipulation/recipes.php')) {
-            include(WORKSPACE . '/jit-image-manipulation/recipes.php');
-        }
+        if (file_exists(WORKSPACE . '/jit-image-manipulation/recipes.php')) include(WORKSPACE . '/jit-image-manipulation/recipes.php');
         // Add recipes array as XML
         if (is_array($recipes) && !empty($recipes)) {
-            foreach ($recipes as $position => $recipe) {
+            foreach($recipes as $position => $recipe) {
                 $recipe_xml = new XMLElement('recipe', null, $recipe);
                 $result->appendChild($recipe_xml);
             }
-        } // No recipes set or recipes.php not readable
+        }
+        // No recipes set or recipes.php not readable
         else {
             $result = $this->emptyXMLSet();
         }
 
         return $result;
     }
+
 }

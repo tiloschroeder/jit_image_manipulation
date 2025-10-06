@@ -1,6 +1,6 @@
 <?php
 
-class extension_JIT_Image_Manipulation extends Extension
+Class extension_JIT_Image_Manipulation extends Extension
 {
 
     const __OK__ = 100;
@@ -22,49 +22,16 @@ class extension_JIT_Image_Manipulation extends Extension
                 'page' => '/system/preferences/',
                 'delegate' => 'Save',
                 'callback' => '__SavePreferences'
-            ),
-            array(
-                'page' => '/all/',
-                'delegate' => 'ModifySymphonyLauncher',
-                'callback' => 'modifySymphonyLauncher'
             )
         );
-    }
-
-    public function modifySymphonyLauncher($context)
-    {
-        if ($_REQUEST['mode'] !== 'jit') {
-            return;
-        }
-
-        $previousLauncher = SYMPHONY_LAUNCHER;
-
-        function jit_launcher($mode)
-        {
-            if (strtolower($mode) == 'jit') {
-                require_once __DIR__ . '/lib/class.jit.php';
-
-                $renderer = JIT\JIT::instance();
-                $renderer->display();
-            } else if (is_callable($previousLauncher)) {
-                $previousLauncher($mode);
-            } else {
-                symphony_launcher($mode);
-            }
-        }
-
-        define('SYMPHONY_LAUNCHER', 'jit_launcher');
     }
 
     public function install()
     {
         require_once 'lib/class.htaccess.php';
         $htaccess = new HTAccess();
-        try {
-            if ($htaccess->exists()) {
-                if (!$htaccess->is_writable()) {
-                    throw new Exception(__('.htaccess exists but is not writable.'));
-                }
+        try{
+            if($htaccess->exists()) {
                 $htaccess->enableExtension();
             }
             // Create workspace directory
@@ -74,12 +41,13 @@ class extension_JIT_Image_Manipulation extends Extension
             Symphony::Configuration()->set('quality', '90', 'image');
 
             Symphony::Configuration()->write();
-        } catch (Exception $ex) {
+        }
+        catch (Exception $ex) {
             $message = __(
                 'An error occured while installing %s. %s',
                 array(
                     __('JIT Image Manipulation'),
-                    $ex->getMessage()
+                      $ex->getMessage()
                 )
             );
             throw new Exception($message);
@@ -96,76 +64,47 @@ class extension_JIT_Image_Manipulation extends Extension
         require_once 'lib/class.htaccess.php';
         $htaccess = new HTAccess();
 
-        if ($htaccess->exists() && !$htaccess->is_writable()) {
-            throw new Exception(__('.htaccess exists but is not writable.'));
-        }
-
-        if (version_compare($previousVersion, '1.15', '<')) {
-            // Move /manifest/jit-trusted-sites into /workspace/jit-image-manipulation
-            if (General::realiseDirectory(WORKSPACE . '/jit-image-manipulation', Symphony::Configuration()->get('write_mode', 'directory')) && file_exists(MANIFEST . '/jit-trusted-sites')) {
-                if (!@rename(MANIFEST . '/jit-trusted-sites', WORKSPACE . '/jit-image-manipulation/trusted-sites')) {
-                    $message = __(
-                        'An error occured while updating %s. Could not move the trusted file to %s',
-                        array(
-                            __('JIT Image Manipulation'),
-                            WORKSPACE . '/jit-image-manipulation/trusted-sites'
-                        )
-                    );
-                    throw new Exception($message);
-                }
-            }
-        }
-
-        if (version_compare($previousVersion, '1.17', '<')) {
-            // Add [B] flag to the .htaccess rule [#37]
-            try {
-                if ($htaccess->exists()) {
-                    $htaccess->addBFlagToRule();
-                }
-            } catch (Exception $ex) {
-                $message = __(
-                    'An error occured while updating %s. %s',
-                    array(
-                        __('JIT Image Manipulation'),
-                        $ex->getMessage()
-                    )
-                );
-                throw new Exception($message);
-            }
-        }
-
-        if (version_compare($previousVersion, '1.21', '<')) {
-            try {
+        if(version_compare($previousVersion, '1.21', '<')) {
+            try{
                 // Simplify JIT htaccess rule [#75]
-                if ($htaccess->exists()) {
+                if($htaccess->exists()) {
                     $htaccess->simplifyJITAccessRule();
                 }
-            } catch (Exception $ex) {
+            }catch (Exception $ex) {
                 $message = __(
                     'An error occured while updating %s. %s',
                     array(
                         __('JIT Image Manipulation'),
-                        $ex->getMessage()
+                          $ex->getMessage()
                     )
                 );
                 throw new Exception($message);
             }
         }
 
-        if (version_compare($previousVersion, '2.0.0', '<')) {
-            try {
-                if ($htaccess->exists()) {
-                    $htaccess->transformRuleToSymphonyLauncher();
+        if(version_compare($previousVersion, '1.17', '<')) {
+            // Add [B] flag to the .htaccess rule [#37]
+            try{
+                if($htaccess->exists()) {
+                    $htaccess->addBFlagToRule(
+                    );
                 }
-            } catch (Exception $ex) {
+            }catch (Exception $ex) {
                 $message = __(
                     'An error occured while updating %s. %s',
                     array(
                         __('JIT Image Manipulation'),
-                        $ex->getMessage()
+                          $ex->getMessage()
                     )
                 );
                 throw new Exception($message);
+            }
+        }
+
+        if(version_compare($previousVersion, '1.15', '<')) {
+            // Move /manifest/jit-trusted-sites into /workspace/jit-image-manipulation
+            if (General::realiseDirectory(WORKSPACE . '/jit-image-manipulation', Symphony::Configuration()->get('write_mode', 'directory')) && file_exists(MANIFEST . '/jit-trusted-sites')) {
+                rename(MANIFEST . '/jit-trusted-sites', WORKSPACE . '/jit-image-manipulation/trusted-sites');
             }
         }
     }
@@ -180,16 +119,16 @@ class extension_JIT_Image_Manipulation extends Extension
     {
         require_once 'lib/class.htaccess.php';
         $htaccess = new HTAccess();
-        try {
-            if ($htaccess->exists()) {
+        try{
+            if($htaccess->exists()) {
                 $htaccess->disableExtension();
             }
-        } catch (Exception $ex) {
+        }catch (Exception $ex) {
             $message = __(
                 'An error occured while disabling %s. %s',
                 array(
                     __('JIT Image Manipulation'),
-                    $ex->getMessage()
+                      $ex->getMessage()
                 )
             );
             throw new Exception($message);
@@ -197,14 +136,14 @@ class extension_JIT_Image_Manipulation extends Extension
     }
 
     /*-------------------------------------------------------------------------
-    Utilities:
-    -------------------------------------------------------------------------*/
+     *        Utilities:
+     *-------------------------------------------------------------------------*/
 
     public function trusted()
     {
         return is_readable(WORKSPACE . '/jit-image-manipulation/trusted-sites')
-            ? file_get_contents(WORKSPACE . '/jit-image-manipulation/trusted-sites')
-            : null;
+        ? file_get_contents(WORKSPACE . '/jit-image-manipulation/trusted-sites')
+        : NULL;
     }
 
     public function saveTrusted($string)
@@ -222,15 +161,15 @@ class extension_JIT_Image_Manipulation extends Extension
             // array to collect recipe handles
             $handles = array();
 
-            foreach ($recipes as $position => $recipe) {
-                if (empty($recipe['name'])) {
+            foreach($recipes as $position => $recipe) {
+                if(empty($recipe['name'])) {
                     $this->recipes_errors[$position] = array(
                         'missing' => __('This is a required field.')
                     );
                     break;
                 }
 
-                if (empty($recipe['url-parameter']) && $recipe['mode'] !== 'regex') {
+                if(empty($recipe['url-parameter']) && $recipe['mode'] !== 'regex') {
                     $recipe['url-parameter'] = $_POST['jit_image_manipulation']['recipes'][$position]['url-parameter'] = Lang::createHandle($recipe['name']);
                 }
 
@@ -239,7 +178,7 @@ class extension_JIT_Image_Manipulation extends Extension
                     // handle does not exist => save recipe
                     $string .= PHP_EOL . "\t\t########";
                     $string .= PHP_EOL . "\t\tarray(";
-                    foreach ($recipe as $key => $value) {
+                    foreach($recipe as $key => $value){
                         $string .= PHP_EOL . "\t\t\t'$key' => ".(strlen($value) > 0 ? "'".addslashes($value)."'" : 'NULL').",";
                     }
                     $string .= PHP_EOL . "\t\t),";
@@ -247,12 +186,14 @@ class extension_JIT_Image_Manipulation extends Extension
 
                     // collect recipe handle
                     $handles[] = $recipe['url-parameter'];
-                } elseif ($recipe['mode'] === 'regex') {
+                }
+                else if($recipe['mode'] === 'regex') {
                     // regex already exists => set error
                     $this->recipes_errors[$position] = array(
                         'invalid' => __('A recipe with this regular expression already exists.')
                     );
-                } else {
+                }
+                else {
                     // handle does exist => set error
                     $this->recipes_errors[$position] = array(
                         'invalid' => __('A recipe with this handle already exists. All handles must be unique.')
@@ -301,7 +242,7 @@ class extension_JIT_Image_Manipulation extends Extension
         );
         $positionOptions = array();
 
-        if (empty($values)) {
+        if(empty($values)) {
             $values = array(
                 'position' => null,
                 'name' => null,
@@ -323,31 +264,33 @@ class extension_JIT_Image_Manipulation extends Extension
         $li = new XMLElement('li');
         $li->setAttribute('class', $position >= 0 ? 'instance expanded' : 'template');
         $li->setAttribute('data-type', 'mode-' . $mode);
-        $header = new XMLElement('header', null, array('data-name' => $modes[$mode]));
+        $header = new XMLElement('header', NULL, array('data-name' => $modes[$mode]));
         $label = (!empty($values['name'])) ? $values['name'] : __('New Recipe');
         $header->appendChild(new XMLElement('h4', '<strong>' . $label . '</strong> <span class="type">' . $modes[$mode] . '</span>'));
         $li->appendChild($header);
-        $li->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][mode]", $mode, 'hidden'));
+        $li->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][mode]", General::sanitize($mode), 'hidden'));
 
         $group = new XMLElement('div');
         $group->setAttribute('class', 'two columns');
 
         // Name
         $label = Widget::Label(__('Name'), null, 'column');
-        $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][name]", $values['name']));
-        if (is_array($error) && isset($error['missing'])) {
+        $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][name]", General::sanitize($values['name'])));
+        if(is_array($error) && isset($error['missing'])) {
             $group->appendChild(Widget::Error($label, $error['missing']));
-        } else {
+        }
+        else {
             $group->appendChild($label);
         }
 
         // Handle
         $label_text = $mode === 'regex' ? __('Regular Expression') : __('Handle') . '<i>e.g. /image/{handle}/path/to/my-image.jpg</i>';
         $label = Widget::Label(__($label_text), null, 'column');
-        $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][url-parameter]", $values['url-parameter']));
-        if (is_array($error) && isset($error['invalid'])) {
+        $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][url-parameter]", General::sanitize($values['url-parameter'])));
+        if(is_array($error) && isset($error['invalid'])) {
             $group->appendChild(Widget::Error($label, $error['invalid']));
-        } else {
+        }
+        else {
             $group->appendChild($label);
         }
 
@@ -358,10 +301,10 @@ class extension_JIT_Image_Manipulation extends Extension
             $group = new XMLElement('div');
             $group->setAttribute('class', 'two columns');
             $label = Widget::Label(__('Width'), null, 'column');
-            $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][width]", $values['width']));
+            $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][width]", General::sanitize($values['width'])));
             $group->appendChild($label);
             $label = Widget::Label(__('Height'), null, 'column');
-            $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][height]", $values['height']));
+            $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][height]", General::sanitize($values['height'])));
             $group->appendChild($label);
             $li->appendChild($group);
         }
@@ -375,7 +318,7 @@ class extension_JIT_Image_Manipulation extends Extension
             $group->appendChild($label);
             $label = Widget::Label(__('Background Color'), null, 'column');
             $label->appendChild(new XMLElement('i', __('Optional')));
-            $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][background]", $values['background']));
+            $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][background]", General::sanitize($values['background'])));
             $group->appendChild($label);
             $li->appendChild($group);
         }
@@ -383,7 +326,7 @@ class extension_JIT_Image_Manipulation extends Extension
         // regex mode
         if ($mode === 'regex') {
             $label = Widget::Label(__('JIT Parameter'));
-            $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][jit-parameter]", $values['jit-parameter']));
+            $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][jit-parameter]", General::sanitize($values['jit-parameter'])));
             $li->appendChild($label);
         }
 
@@ -393,7 +336,7 @@ class extension_JIT_Image_Manipulation extends Extension
         if ($mode !== '0') {
             $label = Widget::Label(__('Image quality'), null, 'column');
             $label->appendChild(new XMLElement('i', __('Optional')));
-            $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][quality]", $values['quality']));
+            $label->appendChild(Widget::Input("jit_image_manipulation[recipes][{$position}][quality]", General::sanitize($values['quality'])));
             $group->appendChild($label);
         }
         if ($mode !== 'regex') {
@@ -401,9 +344,7 @@ class extension_JIT_Image_Manipulation extends Extension
             $label->setAttribute('class', 'column justified');
             $hidden = Widget::Input("jit_image_manipulation[recipes][{$position}][external]", '0', 'hidden');
             $input = Widget::Input("jit_image_manipulation[recipes][{$position}][external]", '1', 'checkbox');
-            if ($values['external'] == '1') {
-                $input->setAttribute('checked', 'checked');
-            }
+            if($values['external'] == '1') $input->setAttribute('checked', 'checked');
             $label->setValue($input->generate() . ' ' . __('External Image'));
             $group->appendChild($hidden);
             $group->appendChild($label);
@@ -415,8 +356,8 @@ class extension_JIT_Image_Manipulation extends Extension
     }
 
     /*-------------------------------------------------------------------------
-    Delegates:
-    -------------------------------------------------------------------------*/
+     *        Delegates:
+     *-------------------------------------------------------------------------*/
 
     public function appendPreferences($context)
     {
@@ -467,11 +408,12 @@ class extension_JIT_Image_Manipulation extends Extension
                     self::createRecipeDuplicatorTemplate($recipe['mode'], $position, $recipe, $this->recipes_errors[$position])
                 );
             }
-        } // otherwise use saved recipes data
+        }
+        // otherwise use saved recipes data
         else {
             (file_exists(WORKSPACE . '/jit-image-manipulation/recipes.php')) ? include(WORKSPACE . '/jit-image-manipulation/recipes.php') : $recipes = array();
             if (is_array($recipes) && !empty($recipes)) {
-                foreach ($recipes as $position => $recipe) {
+                foreach($recipes as $position => $recipe) {
                     $duplicator->appendChild(
                         self::createRecipeDuplicatorTemplate($recipe['mode'], $position, $recipe)
                     );
@@ -488,7 +430,7 @@ class extension_JIT_Image_Manipulation extends Extension
         if (Symphony::Configuration()->get('disable_regular_rules', 'image') == 'yes') {
             $input->setAttribute('checked', 'checked');
         }
-        $label->setValue($input->generate() . ' ' . __('Disable dynamic URLs and use named recipes only.') . '<i><strong>' . __('Warning:') . '</strong>' . __(' this will break image previews in the backend') . '</i>');
+        $label->setValue($input->generate() . ' ' . __('Disable dynamic URLs and use named recipes only'));
 
         $group->appendChild($label);
 
@@ -512,13 +454,13 @@ class extension_JIT_Image_Manipulation extends Extension
 
         // text input to allow external request origins
         $label = Widget::Label(__('Add Cross-Origin Header'));
-        $input = Widget::Input('settings[image][allow_origin]', Symphony::Configuration()->get('allow_origin', 'image'));
+        $input = Widget::Input('settings[image][allow_origin]', General::sanitize(Symphony::Configuration()->get('allow_origin', 'image')));
         $label->appendChild($input);
         $group->appendChild($label);
 
         // textarea for trusted sites
         $label = Widget::Label(__('Trusted Sites'));
-        $label->appendChild(Widget::Textarea('jit_image_manipulation[trusted_external_sites]', 5, 50, $this->trusted()));
+        $label->appendChild(Widget::Textarea('jit_image_manipulation[trusted_external_sites]', 5, 50, General::sanitize($this->trusted())));
 
         $group->appendChild($label);
         $group->appendChild(new XMLElement('p', __('Leave empty to disable external linking. Single rule per line. Add * at end for wild card matching.'), array('class' => 'help')));
@@ -530,7 +472,7 @@ class extension_JIT_Image_Manipulation extends Extension
     {
         $recipes_saved = self::__OK__;
 
-        if (!isset($context['settings']['image']['disable_regular_rules'])) {
+        if(!isset($context['settings']['image']['disable_regular_rules'])){
             $context['settings']['image']['disable_regular_rules'] = 'no';
         }
 
@@ -550,30 +492,21 @@ class extension_JIT_Image_Manipulation extends Extension
         $trusted_saved = $this->saveTrusted(stripslashes($_POST['jit_image_manipulation']['trusted_external_sites']));
         // there were errors saving the trusted files
         if ($trusted_saved == self::__ERROR_TRUSTED__) {
-            $context['errors']['jit-trusted-sites'] = __('An error occurred while saving the JIT trusted sites. Make sure the trusted sites file, %s, exists and is writable and the directory, %s, is also writable.',
-                array(
-                    '<code>/workspace/jit-image-manipulation/trusted-sites</code>',
-                    '<code>/workspace/jit-image-manipulation</code>',
-                )
-            );
+            $context['errors']['jit-trusted-sites'] = __('An error occurred while saving the JIT trusted sites. Make sure the trusted sites file, %s, exists and is writable.', array('<code>/workspace/jit-image-manipulation/trusted-sites</code>'));
         };
 
         // save recipes (if they exist)
-        if (isset($_POST['jit_image_manipulation']['recipes'])) {
+        if(isset($_POST['jit_image_manipulation']['recipes'])) {
             $recipes_saved = $this->saveRecipes($_POST['jit_image_manipulation']['recipes']);
-        } // nothing posted, so clear recipes
+        }
+        // nothing posted, so clear recipes
         else {
             $recipes_saved = $this->saveRecipes(array());
         }
 
         // there were errors saving the recipes
         if ($recipes_saved == self::__ERROR_SAVING_RECIPES__) {
-            $context['errors']['jit-recipes'] = __('An error occurred while saving the JIT recipes. Make sure the recipes file, %s, exists and is writable and the directory, %s, is also writable.',
-                array(
-                    '<code>/workspace/jit-image-manipulation/recipes.php</code>',
-                    '<code>/workspace/jit-image-manipulation</code>',
-                )
-            );
+            $context['errors']['jit-recipes'] = __('An error occurred while saving the JIT recipes. Make sure the recipes file, %s, exists and is writable.', array('<code>/workspace/jit-image-manipulation/recipes.php</code>'));
         }
 
         // there were duplicate recipes handles
@@ -581,4 +514,5 @@ class extension_JIT_Image_Manipulation extends Extension
             $context['errors']['jit-recipes'] = __('An error occurred while saving the JIT recipes.');
         }
     }
+
 }

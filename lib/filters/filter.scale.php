@@ -1,39 +1,18 @@
 <?php
 
-class FilterScale extends FilterResize
+require_once(dirname(__FILE__) . '/filter.resize.php');
+
+
+Class FilterScale extends ImageFilter
 {
 
-    public $mode = 5;
-
-    public static function about()
+    public static function run($res, $percentage)
     {
-        return array(
-            'name' => 'JIT Filter: Scale'
-        );
-    }
-    
-    public static function parseParameters($parameter_string)
-    {
-        $param = array();
+        $percentage = floatval(max(1.0, floatval($percentage)) * 0.01);
 
-        if (preg_match_all('/^(5)\/([0-9]+)\/(?:(0|1)\/)?(.+)$/i', $parameter_string, $matches, PREG_SET_ORDER)) {
-            $param['mode'] = (int)$matches[0][1];
-            $param['settings']['percentage'] = (int)$matches[0][2];
-            $param['settings']['external'] = (bool)$matches[0][3];
-            $param['image_path'] = $matches[0][4];
-        }
+        $width = round(Image::height($res) * $percentage);
 
-        return !empty($param) ? $param : false;
+        return self::resize($res, $width, NULL);
     }
 
-    public static function run(\Image $res, $settings)
-    {
-        $resource = $res->Resource();
-
-        $percentage = floatval(max(1.0, floatval($settings['settings']['percentage'])) * 0.01);
-
-        $settings['settings']['width'] = round(Image::height($resource) * $percentage);
-
-        return parent::run($res, $settings);
-    }
 }
