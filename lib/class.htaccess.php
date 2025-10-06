@@ -1,54 +1,40 @@
 <?php
 
 /**
- * Provides a list of HTAccess transformations for JIT Image Manipulation
- * install, update, and uninstall.
- *
- * @author Kristjan Siimson <dev@siimsoni.ee>
- */
+* Provides a list of HTAccess transformations for JIT Image Manipulation
+* install, update, and uninstall.
+*
+* @author Kristjan Siimson <dev@siimsoni.ee>
+*/
 class HTAccess
 {
     /**
-     * @var string
-     */
+    * @var string
+    */
     private $content;
 
     /**
-     * @var bool
-     */
+    * @var bool
+    */
     private $exists;
 
     /**
-     * @var bool
-     */
-    private $is_writable;
-
-    /**
-     * @var string
-     */
+    * @var string
+    */
     private $path;
 
     public function __construct()
     {
         $this->path = DOCROOT . '/.htaccess';
-        $this->exists = file_exists($this->path) && is_readable($this->path);
-        $this->is_writable = General::checkFile($this->path);
+        $this->exists = file_exists($this->path);
     }
 
     /**
-     * @return bool
-     */
+    * @return bool
+    */
     public function exists()
     {
         return $this->exists;
-    }
-
-    /**
-     * @return bool
-     */
-    public function is_writable()
-    {
-        return $this->is_writable;
     }
 
     public function enableExtension()
@@ -61,7 +47,7 @@ class HTAccess
 
         $rule = "
     ### IMAGE RULES
-    RewriteRule ^image\/(.+)$ index.php?mode=jit&param={$token} [B,L,NC]" . PHP_EOL . PHP_EOL;
+    RewriteRule ^image\/(.+)$ extensions/jit_image_manipulation/lib/image.php?param={$token} [B,L,NC]" . PHP_EOL . PHP_EOL;
 
         if (preg_match('/### IMAGE RULES/', $this->content)) {
             $this->content = preg_replace(
@@ -106,8 +92,8 @@ class HTAccess
     }
 
     /**
-     * Update from < 1.21
-     */
+    * Update from < 1.21
+    */
     public function simplifyJITAccessRule()
     {
         $this->read();
@@ -120,32 +106,16 @@ class HTAccess
     }
 
     /**
-     * Update from < 1.17
-     *
-     * @throws Exception
-     */
+    * Update from < 1.17
+    *
+    * @throws Exception
+    */
     public function addBFlagToRule()
     {
         $this->read();
         $this->content = str_replace(
-            'extensions/jit_image_manipulation/lib/image.php?param=$1 [L,NC]',
-            'extensions/jit_image_manipulation/lib/image.php?param=$1 [B,L,NC]',
-            $this->content
-        );
-        $this->write();
-    }
-
-    /**
-     * Update from < 2.0.0
-     *
-     * @throws Exception
-     */
-    public function transformRuleToSymphonyLauncher()
-    {
-        $this->read();
-        $this->content = str_replace(
-            'RewriteRule ^image\/(.+)$ extensions/jit_image_manipulation/lib/image.php?param=',
-            'RewriteRule ^image\/(.+)$ index.php?mode=jit&param=',
+            'extensions/jit_image_manipulation/lib/image.php?param={$token} [L,NC]',
+            'extensions/jit_image_manipulation/lib/image.php?param={$token} [B,L,NC]',
             $this->content
         );
         $this->write();
@@ -161,30 +131,30 @@ class HTAccess
     }
 
     /**
-     * Populates $this->content from .htaccess
-     *
-     * @throws Exception
-     */
+    * Populates $this->content from .htaccess
+    *
+    * @throws Exception
+    */
     private function read()
     {
         try {
             $this->content = file_get_contents($this->path);
-        } catch (Exception $ex) {
+        } catch(Exception $ex) {
             $message = "Permission denied to '%s'";
             throw new Exception(sprintf($message, $this->path));
         }
     }
 
     /**
-     * Flushes $this->content to .htaccess
-     *
-     * @throws Exception
-     */
+    * Flushes $this->content to .htaccess
+    *
+    * @throws Exception
+    */
     private function write()
     {
         try {
             file_put_contents($this->path, $this->content);
-        } catch (Exception $ex) {
+        } catch(Exception $ex) {
             $message = sprintf("Permission denied to '%s'", $this->path);
             throw new Exception($message);
         }
